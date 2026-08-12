@@ -1,0 +1,17 @@
+.git
+.github
+.factory
+docs
+ops
+LICENSE
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+**/env
+**/.env
+packages/core/tests
+packages/core/*.egg-info
+packages/core/build
+packages/core/dist
