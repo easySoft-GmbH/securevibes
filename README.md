@@ -116,6 +116,73 @@ For package-level details, see `packages/core/README.md`.
 
 ---
 
+## 🐳 Docker
+
+Run SecureVibes in a container — no local Python/venv setup required.
+
+### Build the image
+
+```bash
+docker build -t securevibes .
+```
+
+### Get an Anthropic API key
+
+Docker containers can't use the interactive `claude` / `/login` flow, so
+scans inside a container authenticate with an API key:
+
+1. Go to [console.anthropic.com](https://console.anthropic.com/) and sign in (or create an account).
+2. Open **API Keys** (under Settings).
+3. Click **Create Key**, name it, and copy the value (starts with `sk-ant-...`).
+4. Treat it like a password — don't commit it or bake it into the image.
+
+### Run a scan
+
+Mount the code you want to scan to `/workspace` and pass the key via `-e`:
+
+```bash
+docker run --rm \
+  -e ANTHROPIC_API_KEY="sk-ant-your-key-here" \
+  -v "$PWD:/workspace" \
+  securevibes scan /workspace
+```
+
+This is the containerized equivalent of `securevibes scan .`. Reports are
+written under the mounted directory (e.g. `./.securevibes/scan_report.md`),
+so they persist on the host after the container exits.
+
+Any `securevibes` subcommand works the same way, e.g.:
+
+```bash
+# View CLI help
+docker run --rm securevibes
+
+# JSON report
+docker run --rm -e ANTHROPIC_API_KEY="sk-ant-your-key-here" -v "$PWD:/workspace" \
+  securevibes scan /workspace --format json --output results.json
+
+# PR review (requires the mounted directory to be a full, non-shallow git checkout)
+docker run --rm -e ANTHROPIC_API_KEY="sk-ant-your-key-here" -v "$PWD:/workspace" \
+  securevibes pr-review /workspace --base main --head feature-branch
+```
+
+### Optional configuration
+
+Any of the environment variables documented under
+[Optional Configuration](#optional-configuration) (e.g.
+`SECUREVIBES_MAX_TURNS`, `SECUREVIBES_CODE_REVIEW_MODEL`) can be passed the
+same way, with additional `-e` flags:
+
+```bash
+docker run --rm \
+  -e ANTHROPIC_API_KEY="sk-ant-your-key-here" \
+  -e SECUREVIBES_MAX_TURNS=75 \
+  -v "$PWD:/workspace" \
+  securevibes scan /workspace
+```
+
+---
+
 ## 🎯 Usage
 
 ### Basic Commands
