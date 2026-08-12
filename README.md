@@ -166,7 +166,7 @@ docker run --rm -e ANTHROPIC_API_KEY="sk-ant-your-key-here" -v "$PWD:/workspace"
   securevibes pr-review /workspace --base main --head feature-branch
 ```
 
-### Optional configuration
+### Passing environment variables
 
 Any of the environment variables documented under
 [Optional Configuration](#optional-configuration) (e.g.
