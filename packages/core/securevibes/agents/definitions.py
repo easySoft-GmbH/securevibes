@@ -81,18 +81,26 @@ def create_agent_definitions(
             prompt=AGENT_PROMPTS["assessment"],
             tools=["Read", "Grep", "Glob", "LS", "Write"],
             model=config.get_agent_model("assessment", cli_override=cli_model),
+            # Phases run strictly sequentially and depend on each other's output
+            # files, so subagents must never be backgrounded (see AgentDefinition
+            # docs / claude-agent-sdk-python#1088 for why a backgrounded Task can
+            # outlive the turn that spawned it, ending the scan before it writes
+            # its artifact).
+            background=False,
         ),
         "threat-modeling": AgentDefinition(
             description="Performs architecture-driven STRIDE threat modeling focused on realistic, high-impact threats, augmented with technology-specific skills for agentic AI, APIs, and other specialized architectures",
             prompt=threat_modeling_prompt,
             tools=["Read", "Grep", "Glob", "Write", "Skill"],
             model=config.get_agent_model("threat_modeling", cli_override=cli_model),
+            background=False,
         ),
         "code-review": AgentDefinition(
             description="Applies security thinking methodology to find vulnerabilities with concrete evidence and exploitability analysis",
             prompt=AGENT_PROMPTS["code_review"],
             tools=["Read", "Grep", "Glob", "Write"],
             model=config.get_agent_model("code_review", cli_override=cli_model),
+            background=False,
         ),
         "pr-code-review": AgentDefinition(
             description=(
@@ -102,18 +110,21 @@ def create_agent_definitions(
             prompt=AGENT_PROMPTS["pr_code_review"],
             tools=["Read", "Grep", "Glob", "Write"],
             model=config.get_agent_model("pr_code_review", cli_override=cli_model),
+            background=False,
         ),
         "report-generator": AgentDefinition(
             description="JSON file processor that reformats VULNERABILITIES.json to scan_results.json",
             prompt=AGENT_PROMPTS["report_generator"],
             tools=["Read", "Write"],
             model=config.get_agent_model("report_generator", cli_override=cli_model),
+            background=False,
         ),
         "dast": AgentDefinition(
             description="Validates vulnerabilities via HTTP testing ONLY when a matching Agent Skill is available; otherwise reports UNVALIDATED",
             prompt=dast_prompt,
             tools=["Read", "Write", "Skill", "Bash"],
             model=config.get_agent_model("dast", cli_override=cli_model),
+            background=False,
         ),
     }
 
