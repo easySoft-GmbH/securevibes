@@ -123,7 +123,7 @@ Run SecureVibes in a container — no local Python/venv setup required.
 ### Build the image
 
 ```bash
-docker build -t securevibes .
+docker build -t securevibes:local .
 ```
 
 ### Get an Anthropic API key
@@ -144,7 +144,7 @@ Mount the code you want to scan to `/workspace` and pass the key via `-e`:
 docker run --rm \
   -e ANTHROPIC_API_KEY="sk-ant-your-key-here" \
   -v "$PWD:/workspace" \
-  securevibes scan /workspace
+  securevibes:local scan /workspace
 ```
 
 This is the containerized equivalent of `securevibes scan .`. Reports are
@@ -155,15 +155,15 @@ Any `securevibes` subcommand works the same way, e.g.:
 
 ```bash
 # View CLI help
-docker run --rm securevibes
+docker run --rm securevibes:local
 
 # JSON report
 docker run --rm -e ANTHROPIC_API_KEY="sk-ant-your-key-here" -v "$PWD:/workspace" \
-  securevibes scan /workspace --format json --output results.json
+  securevibes:local scan /workspace --format json --output results.json
 
 # PR review (requires the mounted directory to be a full, non-shallow git checkout)
 docker run --rm -e ANTHROPIC_API_KEY="sk-ant-your-key-here" -v "$PWD:/workspace" \
-  securevibes pr-review /workspace --base main --head feature-branch
+  securevibes:local pr-review /workspace --base main --head feature-branch
 ```
 
 ### Passing environment variables
@@ -178,7 +178,7 @@ docker run --rm \
   -e ANTHROPIC_API_KEY="sk-ant-your-key-here" \
   -e SECUREVIBES_MAX_TURNS=75 \
   -v "$PWD:/workspace" \
-  securevibes scan /workspace
+  securevibes:local scan /workspace
 ```
 
 ---
