@@ -1640,6 +1640,7 @@ ARCHITECTURE CONTEXT:
         max_turns=8,
         permission_mode=_runtime_permission_mode(permission_mode),
         model=model,
+        max_buffer_size=config.get_max_buffer_size(),
     )
 
     collected_text: list[str] = []
@@ -1755,6 +1756,7 @@ CANDIDATE FINDINGS JSON:
         max_turns=10,
         permission_mode=_runtime_permission_mode(permission_mode),
         model=model,
+        max_buffer_size=config.get_max_buffer_size(),
     )
 
     collected_text: list[str] = []
@@ -1877,6 +1879,7 @@ Only report findings at or above: {severity_threshold}
         max_turns=10,
         permission_mode=_runtime_permission_mode(permission_mode),
         model=model,
+        max_buffer_size=config.get_max_buffer_size(),
     )
 
     collected_text: list[str] = []
@@ -2002,6 +2005,7 @@ Only report findings at or above: {severity_threshold}
         max_turns=10,
         permission_mode=_runtime_permission_mode(permission_mode),
         model=model,
+        max_buffer_size=config.get_max_buffer_size(),
     )
 
     collected_text: list[str] = []
@@ -2119,6 +2123,7 @@ Only report findings at or above: {severity_threshold}
         max_turns=8,
         permission_mode=_runtime_permission_mode(permission_mode),
         model=model,
+        max_buffer_size=config.get_max_buffer_size(),
     )
 
     collected_text: list[str] = []
@@ -3032,6 +3037,7 @@ ARCHITECTURE CONTEXT:
         max_turns=8,
         permission_mode=_runtime_permission_mode(permission_mode),
         model=model,
+        max_buffer_size=config.get_max_buffer_size(),
     )
 
     collected_text: list[str] = []
@@ -5004,6 +5010,7 @@ class Scanner:
             max_turns=config.get_max_turns(),
             permission_mode=self.permission_mode,
             model=self.model,
+            max_buffer_size=config.get_max_buffer_size(),
             hooks={
                 "PreToolUse": [
                     HookMatcher(

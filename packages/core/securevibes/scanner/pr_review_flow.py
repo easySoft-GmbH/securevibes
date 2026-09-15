@@ -461,6 +461,7 @@ class PRReviewAttemptRunner:
                 max_turns=config.get_max_turns(),
                 permission_mode=self._permission_mode,
                 model=self.model,
+                max_buffer_size=config.get_max_buffer_size(),
                 hooks={
                     "PreToolUse": [
                         self._hook_matcher_cls(hooks=[json_validation_hook]),

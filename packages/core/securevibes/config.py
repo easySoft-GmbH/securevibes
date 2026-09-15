@@ -220,6 +220,10 @@ class AgentConfig:
     DEFAULT_MAX_TURNS = 50
     DEFAULT_PR_REVIEW_TIMEOUT_SECONDS = 240
     DEFAULT_PR_REVIEW_ATTEMPTS = 4
+    # Default max size (bytes) for a single JSON message read from the Claude CLI subprocess.
+    # The SDK default (1 MiB) is too small for large tool results (e.g. broad Grep matches),
+    # so we raise it well above that ceiling.
+    DEFAULT_MAX_BUFFER_SIZE = 10 * 1024 * 1024
 
     @classmethod
     def get_agent_model(cls, agent_name: str, cli_override: Optional[str] = None) -> str:
@@ -333,6 +337,24 @@ class AgentConfig:
         if attempts < 1:
             return cls.DEFAULT_PR_REVIEW_ATTEMPTS
         return attempts
+
+    @classmethod
+    def get_max_buffer_size(cls) -> int:
+        """
+        Get the max size (bytes) for a single JSON message from the Claude CLI subprocess.
+
+        Can be overridden via SECUREVIBES_MAX_BUFFER_SIZE environment variable.
+        """
+        try:
+            buffer_size = int(
+                os.getenv("SECUREVIBES_MAX_BUFFER_SIZE", cls.DEFAULT_MAX_BUFFER_SIZE)
+            )
+        except ValueError:
+            return cls.DEFAULT_MAX_BUFFER_SIZE
+
+        if buffer_size < 1:
+            return cls.DEFAULT_MAX_BUFFER_SIZE
+        return buffer_size
 
 
 # Global configuration instance
