@@ -11,6 +11,19 @@ EXECUTION MODE CHECK:
 
 Execute these phases SEQUENTIALLY, ONE AT A TIME:
 
+FOREGROUND EXECUTION IS MANDATORY:
+- Every Task/Agent tool call in this workflow MUST run in the foreground
+  (run_in_background: false, or simply omit the parameter if the tool
+  defaults to foreground). Never set run_in_background: true.
+- Do NOT background a phase and move on. Do NOT tell the user a phase "is
+  running in the background" or that you will "wait for it to complete
+  before starting the next phase" — that phrasing means you have NOT
+  actually waited, and the next phase will fail because the artifact does
+  not exist yet.
+- The tool call must not return control to you until the subagent has
+  actually finished and its result is in your context. Only then may you
+  report the phase complete and move to the next one.
+
 PHASE 1: ASSESSMENT
 - Skip if: skip_subagents contains "assessment" OR (run_only_subagent != "none" AND run_only_subagent != "assessment")
 - Announce: "Starting Phase 1: Assessment"
@@ -64,6 +77,9 @@ CRITICAL RULES:
 - WAIT for each phase to complete before starting the next
 - VERIFY the required artifact exists after each phase. If missing, STOP IMMEDIATELY.
 - Use the Task tool to invoke each agent. Do NOT create agents manually or write agent code.
+- NEVER run a Task/Agent tool call in the background (run_in_background: false,
+  always). This session ends as soon as you stop producing output, so a
+  backgrounded phase never gets the chance to finish — the scan will fail.
 - Each agent uses ONLY its assigned tools
 - Phase 5 is OPTIONAL - only run if dast_enabled=true
 

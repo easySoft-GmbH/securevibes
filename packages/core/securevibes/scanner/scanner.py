@@ -8,7 +8,7 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, Callable, Sequence, Awaitable
+from typing import Optional, Dict, Any, Callable, Sequence, Awaitable, Tuple
 from rich.console import Console
 
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
@@ -28,6 +28,7 @@ from securevibes.scanner.subagent_manager import (
     SubAgentManager,
     ScanMode,
     SUBAGENT_ORDER,
+    SUBAGENT_ARTIFACTS,
 )
 from securevibes.scanner.detection import (
     collect_agentic_detection_files,
@@ -5034,30 +5035,84 @@ class Scanner:
             f"{load_prompt('main', category='orchestration')}\n\n{scan_mode_context}"
         )
 
+        # Phases this run is actually expected to produce artifacts for, in order.
+        run_order = [
+            subagent
+            for subagent in SUBAGENT_ORDER
+            if subagent not in skip_subagents
+            and (subagent != "dast" or dast_enabled_for_run)
+        ]
+
+        def _first_missing_artifact() -> Optional[Tuple[str, str]]:
+            """First (subagent, artifact_filename) in run_order not yet on disk."""
+            for subagent in run_order:
+                artifact_name = SUBAGENT_ARTIFACTS[subagent]["creates"]
+                if not (securevibes_dir / artifact_name).exists():
+                    return subagent, artifact_name
+            return None
+
+        # The orchestrator sometimes ends its turn claiming a phase is "still
+        # running" or "in the background" without actually invoking the Task
+        # tool synchronously (a known claude-agent-sdk limitation - a
+        # ResultMessage only ends one turn, not necessarily the whole run; see
+        # https://github.com/anthropics/claude-agent-sdk-python/issues/1088).
+        # When that happens, no artifact is ever written and the CLI process
+        # has already exited. Detect the stall and nudge it to actually do the
+        # work, instead of silently returning an incomplete scan.
+        max_stall_retries = 2
+        stall_retries = 0
+
         # Execute scan with streaming progress
         try:
             async with ClaudeSDKClient(options=options) as client:
+
+                async def _drain_until_result() -> None:
+                    async for message in client.receive_messages():
+                        if isinstance(message, AssistantMessage):
+                            for block in message.content:
+                                if isinstance(block, TextBlock):
+                                    # Show agent narration if in debug mode
+                                    tracker.on_assistant_text(block.text)
+
+                        elif isinstance(message, ResultMessage):
+                            # Track costs in real-time
+                            if message.total_cost_usd:
+                                self.total_cost = message.total_cost_usd
+                                if self.debug:
+                                    self.console.print(
+                                        f"  💰 Cost update: ${self.total_cost:.4f}",
+                                        style="cyan",
+                                    )
+                            # ResultMessage indicates this turn is complete - exit the loop
+                            break
+
                 await client.query(orchestration_prompt)
+                await _drain_until_result()
 
-                # Stream messages for real-time progress
-                async for message in client.receive_messages():
-                    if isinstance(message, AssistantMessage):
-                        for block in message.content:
-                            if isinstance(block, TextBlock):
-                                # Show agent narration if in debug mode
-                                tracker.on_assistant_text(block.text)
-
-                    elif isinstance(message, ResultMessage):
-                        # Track costs in real-time
-                        if message.total_cost_usd:
-                            self.total_cost = message.total_cost_usd
-                            if self.debug:
-                                self.console.print(
-                                    f"  💰 Cost update: ${self.total_cost:.4f}",
-                                    style="cyan",
-                                )
-                        # ResultMessage indicates scan completion - exit the loop
+                while True:
+                    missing = _first_missing_artifact()
+                    if missing is None or stall_retries >= max_stall_retries:
                         break
+                    subagent_name, artifact_name = missing
+                    stall_retries += 1
+                    if self.debug:
+                        self.console.print(
+                            f"  ⚠️  {artifact_name} not found after the orchestrator's turn "
+                            f"ended (attempt {stall_retries}/{max_stall_retries}). Nudging it "
+                            f"to actually run the '{subagent_name}' agent synchronously.",
+                            style="yellow",
+                        )
+                    nudge_prompt = (
+                        f"{artifact_name} does not exist yet in .securevibes/. You have NOT "
+                        f"actually completed this phase, regardless of anything you said "
+                        f"previously about it running or waiting. Use the Task tool to invoke "
+                        f"the '{subagent_name}' agent RIGHT NOW with run_in_background: false. "
+                        f"Do not respond again until its tool result is in your context and "
+                        f"{artifact_name} has actually been written to disk. Then continue "
+                        f"with any remaining phases as originally instructed."
+                    )
+                    await client.query(nudge_prompt)
+                    await _drain_until_result()
 
             self.console.print("\n" + "=" * 80)
 
@@ -5428,10 +5483,31 @@ class Scanner:
             data = load_json_file(vulnerabilities_file)
 
         if data is None:
+            phase_artifacts = {
+                "assessment (Phase 1)": securevibes_dir / "SECURITY.md",
+                "threat modeling (Phase 2)": securevibes_dir / "THREAT_MODEL.json",
+                "code review (Phase 3)": vulnerabilities_file,
+                "report generation (Phase 4)": results_file,
+            }
+            last_completed = None
+            for phase_label, artifact in phase_artifacts.items():
+                if artifact.exists():
+                    last_completed = phase_label
+            if last_completed is None:
+                stall_hint = (
+                    "No phase artifacts were produced at all, which usually means the "
+                    "orchestrator ended its turn before Phase 1 actually ran (e.g. it "
+                    "announced a phase as \"running in the background\" instead of "
+                    "waiting for the subagent to finish). Re-run the scan; if this "
+                    "keeps happening, check the scan log for that phrasing."
+                )
+            else:
+                stall_hint = f"The last phase to produce an artifact was: {last_completed}."
             raise RuntimeError(
                 f"Scan failed to generate results. Expected files not found:\n"
                 f"  - {results_file}\n"
                 f"  - {vulnerabilities_file}\n"
+                f"{stall_hint}\n"
                 f"Check {securevibes_dir}/ for partial artifacts."
             )
 
