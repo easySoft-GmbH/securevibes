@@ -699,6 +699,7 @@ Before scanning:
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - Multi-agent system design and workflow
 - **[Streaming Mode Guide](docs/STREAMING_MODE.md)** - Real-time progress tracking (recommended for large repos)
 - **[Maintenance Guide](docs/MAINTENANCE.md)** - Keep codebase clean, tested, and pruned
+- **[Container Publishing Guide](docs/CONTAINER_PUBLISHING.md)** - CI image publishing to Azure Container Registry, and token setup/rotation
 - **[Claude SDK Guide](docs/references/claude-agent-sdk-guide.md)** - Claude Agent SDK reference
 
 ---
